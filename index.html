@@ -1,0 +1,539 @@
+<!DOCT<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-based Adventure Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        #output {
+            margin-bottom: 10px;
+        }
+        #gold-display {
+            position: fixed;
+            top: 0;
+            right: 120px;
+            background-color: #fff;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+        }
+        #inventory-btn, #save-btn, #quest-btn {
+            position: fixed;
+            top: 30px;
+            right: 20px;
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div id="gold-display">Gold: <span id="gold">0</span></div>
+    <div id="output"></div>
+    <input type="text" id="input" autofocus>
+    <button onclick="createCharacter()">Create Character</button>
+    <button id="inventory-btn" onclick="toggleInventory()">Open Inventory</button>
+    <button id="save-btn" onclick="saveGame()">Save</button>
+    <button id="quest-btn" onclick="toggleQuestList()">Quests</button>
+    <div id="inventory" style="display: none;">
+        <!-- Inventory contents will be displayed here -->
+    </div>
+    <div id="quest-list" style="display: none;">
+        <!-- Quest list contents will be displayed here -->
+    </div>
+    <script>
+        let character = null; // Global variable to store character data
+        let currentLocation = "town"; // Initialize current location
+        let enemies = ['goblin', 'skeleton', 'wolf']; // List of possible enemies
+        let tools = ['axe', 'sword', 'bow', 'fishing rod']; // List of available tools
+        let armors = ['leather armor', 'chainmail armor', 'plate armor']; // List of available armors
+        let items = ['health potion', 'stamina potion']; // List of other items
+        let sellables = ['gem', 'rare artifact']; // List of items that can be sold to merchants
+        let quests = []; // List of quests
+        let npcs = []; // List of NPCs
+
+        // NPC names
+        let npcNames = ['John', 'Mary', 'David', 'Emily', 'Michael', 'Jessica', 'William', 'Sarah', 'James', 'Emma', 'Matthew', 'Olivia'];
+
+
+   // Function to perform intimate interaction with a character
+        function makeLove(characterName) {
+            // Find the NPC with the given name in the current location
+            let npc = npcs.find(n => n.name.toLowerCase() === characterName);
+            if (npc && npc.romanceable) {
+                // Check if the character is in a romantic relationship
+                if (character.romanticPartner === npc) {
+                    // Display romantic interaction
+                    displayOutput("You share a loving moment with " + npc.name + ".");
+                    // Update NPC dialog
+                    npc.dialog = "I cherish every moment with you.";
+                } else {
+                    displayOutput("You can't make love to " + characterName + " because you are not in a romantic relationship.");
+                }
+            } else {
+                displayOutput("You can't make love to " + characterName + ".");
+            }
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Generate random NPCs
+        function generateNPCs() {
+            for (let i = 0; i < 5; i++) {
+                let npc = {
+                    name: npcNames[Math.floor(Math.random() * npcNames.length)],
+                    location: 'town', // NPCs are initially in the town
+                    dialog: "I'm just a humble villager.",
+                    quests: [], // NPCs may offer quests
+                    romanceable: true, // NPCs are romanceable by default
+                    romanticPartner: null // Initialize romantic partner
+                };
+                npcs.push(npc);
+            }
+        }
+
+        generateNPCs(); // Generate NPCs
+
+        // Function to display output
+        function displayOutput(output) {
+            document.getElementById('output').innerHTML += '<p>' + output + '</p>';
+        }
+
+        // Function to create a character
+        function createCharacter() {
+            // Define ability scores
+            let abilities = ['Strength', 'Dexterity', 'Constitution', 'Intelligence', 'Wisdom', 'Charisma'];
+            let abilityScores = {};
+
+            // Roll 4 six-sided dice and sum the three highest rolls for each ability score
+            for (let i = 0; i < abilities.length; i++) {
+                let rolls = [];
+                for (let j = 0; j < 4; j++) {
+                    rolls.push(Math.floor(Math.random() * 6) + 1);
+                }
+                rolls.sort((a, b) => b - a);
+                let total = rolls[0] + rolls[1] + rolls[2];
+                abilityScores[abilities[i]] = total;
+            }
+
+            // Store the character details
+            character = {
+                abilities: abilityScores,
+                inventory: [],
+                gold: 100, // Starting gold
+                health: 100, // Starting health
+                stamina: 100, // Starting stamina
+                quests: [],
+                romanticPartner: null // Initialize romantic partner
+            };
+
+            // Display the character details
+            displayOutput('<strong>Character Created!</strong>');
+            displayOutput('<strong>Ability Scores:</strong>');
+            for (let ability in abilityScores) {
+                displayOutput(ability + ': ' + abilityScores[ability]);
+            }
+            // Display initial location description
+            displayOutput(getLocationDescription(currentLocation));
+            // Update gold display
+            updateGoldDisplay();
+            // Generate world map
+            generateWorldMap();
+        }
+
+        // Function to update the gold display
+        function updateGoldDisplay() {
+            document.getElementById('gold').textContent = character.gold;
+        }
+
+        // Function to generate world map
+        function generateWorldMap() {
+            // Here you can generate a random world map with cities
+            // For simplicity, let's just display a message
+            displayOutput('<strong>World Map Generated!</strong>');
+        }
+
+        // Function to handle player input
+        function handleInput(input) {
+            // Split input into command and argument
+            let [verb, noun] = input.toLowerCase().split(' ');
+
+            // Check the command and perform corresponding actions
+            switch (verb) {
+                case 'go':
+                    goDirection(noun);
+                    break;
+                case 'grab':
+                case 'pick':
+                case 'take':
+                    interactWithObject(noun);
+                    break;
+                case 'talk':
+                    talkToCharacter(noun);
+                    break;
+                case 'sell':
+                    sellItem(noun);
+                    break;
+                case 'give':
+                    giveGift(noun);
+                    break;
+                case 'inventory':
+                    displayInventory();
+                    break;
+                case 'cut':
+                    cutWithTool(noun);
+                    break;
+                case 'fish':
+                    goFishing();
+                    break;
+                case 'fight':
+                    initiateFight();
+                    break;
+                case 'tame':
+                    attemptTaming(noun);
+                    break;
+                case 'quests':
+                    displayQuestList();
+                    break;
+                case 'marry':
+                    marryCharacter(noun);
+                    break;
+                case 'romance':
+                    romanceCharacter(noun);
+                    break;
+                case 'hug':
+                    romanticInteraction('hug');
+                    break;
+                case 'kiss':
+                    romanticInteraction('kiss');
+                    break;
+                case 'search':
+                    searchRoom();
+                    break;
+                case 'pickpocket':
+                    pickpocket();
+                    break;
+                // Add more commands as needed
+                default:
+                    displayOutput("Unknown command.");
+            }
+        }
+
+        // Function to handle player movement
+        function goDirection(direction) {
+            // Implement movement logic based on currentLocation and direction
+            // For example, update currentLocation to the new location after moving
+            displayOutput("You go " + direction + ".");
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to handle player interaction with objects
+        function interactWithObject(object) {
+            // Implement interaction logic based on currentLocation and object
+            // For example, open doors, loot chests, etc.
+            displayOutput("You interact with " + object + ".");
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to handle player talking to characters
+        function talkToCharacter(characterName) {
+            // Find the NPC with the given name in the current location
+            let npc = npcs.find(n => n.name.toLowerCase() === characterName);
+            if (npc) {
+                // Display NPC dialog
+                displayOutput("<span style='color: blue;'>" + npc.name + " says:</span> " + npc.dialog);
+                // Check if NPC has quests
+                if (npc.quests.length > 0) {
+                    displayOutput("<em>Quests available:</em>");
+                    for (let quest of npc.quests) {
+                        displayOutput("- " + quest.name);
+                    }
+                } else {
+                    displayOutput("<em>No quests available.</em>");
+                }
+            } else {
+                displayOutput("There's no one named " + characterName + " here.");
+            }
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to handle selling items to merchants
+        function sellItem(item) {
+            // Check if the item is in the player's inventory
+            let index = character.inventory.indexOf(item);
+            if (index !== -1) {
+                // Remove the item from the inventory
+                character.inventory.splice(index, 1);
+                // Increase the player's gold
+                character.gold += 10; // Example: Sell for 10 gold
+                displayOutput("You sold " + item + " for 10 gold.");
+                // Update gold display
+                updateGoldDisplay();
+            } else {
+                displayOutput("You don't have " + item + " to sell.");
+            }
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to handle giving gifts to NPCs
+        function giveGift(characterName) {
+            // Check if the character is present in the current location
+            // For example, check if the character is an NPC in the current location
+            switch (characterName) {
+                case 'merchant':
+                    // Increase favorability with the merchant
+                    displayOutput("You give a gift to the merchant.");
+                    // Update current location description
+                    displayOutput(getLocationDescription(currentLocation));
+                    break;
+                case 'innkeeper':
+                    // Increase favorability with the innkeeper
+                    displayOutput("You give a gift to the innkeeper.");
+                    // Update current location description
+                    displayOutput(getLocationDescription(currentLocation));
+                    break;
+                default:
+                    displayOutput("There's no one here to give a gift to.");
+            }
+        }
+
+        // Function to handle cutting with a tool
+        function cutWithTool(tool) {
+            if (tools.includes(tool)) {
+                displayOutput("You use the " + tool + " to cut.");
+                // Implement resource gathering logic
+            } else {
+                displayOutput("You can't cut with that.");
+            }
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to handle fishing
+        function goFishing() {
+            displayOutput("You start fishing.");
+            // Implement fishing logic
+            // This could involve chance-based outcomes like catching fish or losing bait
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to initiate a fight encounter
+        function initiateFight() {
+            // Randomly select an enemy
+            let enemy = enemies[Math.floor(Math.random() * enemies.length)];
+            displayOutput("You encounter a " + enemy + "!");
+            // Implement turn-based combat
+            // This could involve actions like attack, defend, use items, etc.
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to attempt creature taming
+        function attemptTaming(creature) {
+            if (tameableCreatures.includes(creature)) {
+                displayOutput("You attempt to tame the " + creature + ".");
+                // Implement taming logic
+                // This could involve chance-based outcomes or specific requirements
+                // Update current location description
+                displayOutput(getLocationDescription(currentLocation));
+            } else {
+                displayOutput("You can't tame a " + creature + ".");
+            }
+        }
+
+        // Function to marry a character
+        function marryCharacter(characterName) {
+            // Find the NPC with the given name in the current location
+            let npc = npcs.find(n => n.name.toLowerCase() === characterName);
+            if (npc && npc.romanceable) {
+                // Check if the character is already married
+                if (character.romanticPartner !== null) {
+                    displayOutput("You are already married!");
+                } else {
+                    // Marry the character
+                    character.romanticPartner = npc;
+                    displayOutput("You are now married to " + npc.name + "!");
+                }
+            } else {
+                displayOutput("You can't marry " + characterName + ".");
+            }
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to initiate romance with a character
+        function romanceCharacter(characterName) {
+            // Find the NPC with the given name in the current location
+            let npc = npcs.find(n => n.name.toLowerCase() === characterName);
+            if (npc && npc.romanceable) {
+                // Check if the character is already in a romantic relationship
+                if (character.romanticPartner !== null && character.romanticPartner !== npc) {
+                    displayOutput("You are already in a relationship!");
+                } else {
+                    // Initiate romance with the character
+                    character.romanticPartner = npc;
+                    displayOutput("You are now in a romantic relationship with " + npc.name + "!");
+                }
+            } else {
+                displayOutput("You can't romance " + characterName + ".");
+            }
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to perform romantic interactions
+        function romanticInteraction(action) {
+            if (character.romanticPartner !== null) {
+                switch (action) {
+                    case 'hug':
+                        displayOutput("You hug " + character.romanticPartner.name + ".");
+                        break;
+                    case 'kiss':
+                        displayOutput("You kiss " + character.romanticPartner.name + ".");
+                        break;
+                    // Add more romantic interactions as needed
+                    default:
+                        displayOutput("You express your love to " + character.romanticPartner.name + ".");
+                }
+            } else {
+                displayOutput("You are not in a romantic relationship.");
+            }
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Function to display the player's inventory
+        function displayInventory() {
+            let inventoryContent = character.inventory.length > 0 ? character.inventory.join(', ') : 'Your inventory is empty.';
+            document.getElementById('inventory').innerHTML = '<strong>Inventory:</strong> ' + inventoryContent;
+        }
+
+        // Function to display the quest list
+        function displayQuestList() {
+            let questContent = character.quests.length > 0 ? character.quests.map(q => q.name).join('<br>') : 'No active quests.';
+            document.getElementById('quest-list').innerHTML = '<strong>Quests:</strong><br>' + questContent;
+            document.getElementById('quest-list').style.display = 'block';
+        }
+
+        // Function to toggle the visibility of the inventory
+        function toggleInventory() {
+            let inventoryDiv = document.getElementById('inventory');
+            if (inventoryDiv.style.display === 'none') {
+                displayInventory();
+                inventoryDiv.style.display = 'block';
+            } else {
+                inventoryDiv.style.display = 'none';
+            }
+        }
+
+        // Function to toggle the visibility of the quest list
+        function toggleQuestList() {
+            let questListDiv = document.getElementById('quest-list');
+            if (questListDiv.style.display === 'none') {
+                displayQuestList();
+                questListDiv.style.display = 'block';
+            } else {
+                questListDiv.style.display = 'none';
+            }
+        }
+
+        // Function to save the game state
+        function saveGame() {
+            // Save character data to localStorage
+            localStorage.setItem('character', JSON.stringify(character));
+            // Show a message to indicate successful save
+            displayOutput('<strong>Game Saved!</strong>');
+        }
+
+        // Function to generate a description of the current location
+        function getLocationDescription(location) {
+            // This function should return a description of the current location
+            // You can customize this function based on your world map and locations
+            let description = "You are in " + location + ". ";
+            // Add additional details based on the location
+            switch (location) {
+                case 'house':
+                    description += "This is a cozy house with a fireplace and some furniture.";
+                    description += " You notice a table with some items on it.";
+                    break;
+                case 'forest':
+                    description += "You find yourself in a dense forest with tall trees all around you.";
+                    description += " There's a river nearby.";
+                    break;
+                case 'cave':
+                    description += "You are inside a dark cave. It smells musty and damp.";
+                    description += " You can see some sparkling gems on the ground.";
+                    break;
+                case 'town':
+                    description += "You are in the bustling town center. People are going about their business.";
+                    description += " You can see various shops and NPCs around.";
+                    break;
+                default:
+                    description += "There's not much to see here.";
+            }
+            return description;
+        }
+
+        // Function to search the room for interactable objects
+        function searchRoom() {
+            let description = getLocationDescription(currentLocation);
+            // Highlight objects, stealables, and NPCs in different colors
+            description = description.replace(/(\b\w+\b)/g, function(match) {
+                if (match.toLowerCase() === 'table' || match.toLowerCase() === 'chest' || match.toLowerCase() === 'door') {
+                    return "<span style='color: gold;'>" + match + "</span>";
+                } else if (match.toLowerCase() === 'gem' || match.toLowerCase() === 'artifact') {
+                    return "<span style='color: red;'>" + match + "</span>";
+                } else if (npcNames.includes(match)) {
+                    return "<span style='color: blue;'>" + match + "</span>";
+                } else {
+                    return match;
+                }
+            });
+            displayOutput(description);
+        }
+
+        // Function to pickpocket an NPC
+        function pickpocket() {
+            // Check if there are NPCs in the current location
+            let npcsInLocation = npcs.filter(n => n.location === currentLocation);
+            if (npcsInLocation.length > 0) {
+                // Randomly select an NPC to pickpocket
+                let npcToPickpocket = npcsInLocation[Math.floor(Math.random() * npcsInLocation.length)];
+                // Attempt pickpocketing (50% chance of success)
+                if (Math.random() < 0.5) {
+                    // Pickpocket successful
+                    displayOutput("You successfully pickpocket " + npcToPickpocket.name + ".");
+                    // Add stolen items to player's inventory
+                    let stolenItems = ['gold', 'jewelry'];
+                    character.inventory.push(...stolenItems);
+                } else {
+                    // Pickpocket failed
+                    displayOutput("You failed to pickpocket " + npcToPickpocket.name + ".");
+                }
+            } else {
+                displayOutput("There are no NPCs here to pickpocket.");
+            }
+            // Update current location description
+            displayOutput(getLocationDescription(currentLocation));
+        }
+
+        // Event listener for player input
+        document.getElementById('input').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                let input = document.getElementById('input').value.trim();
+                handleInput(input);
+                document.getElementById('input').value = ''; // Clear input field
+            }
+        });
+    </script>
+</body>
+</html>
